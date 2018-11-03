@@ -3,6 +3,7 @@ package client
 import (
 	"testing"
 	"log"
+	"time"
 )
 
 func TestCreateClient(t *testing.T) {
@@ -22,5 +23,6 @@ func TestSendMsgToServer(t *testing.T) {
 	SendMsgToServer("第二次", conn)
 	SendMsgToServer("第三次", conn)
 	SendMsgToServer("第四次", conn)
+	time.Sleep(2*time.Second)
 	conn.Close()
 }

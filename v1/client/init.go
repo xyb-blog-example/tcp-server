@@ -37,7 +37,7 @@ func CreateClient() *net.TCPConn {
 func handleServer(conn *net.TCPConn) {
 	i := 0
 	for {
-		headBuffer		:= make([]byte, 50)
+		headBuffer		:= make([]byte, 100)
 		_, err	:= conn.Read(headBuffer)
 		if err != nil {
 			log.Fatalln("从网络流中读取数据失败,error:", err.Error())
