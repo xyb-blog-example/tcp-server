@@ -4,6 +4,7 @@ import (
 	"os"
 	"tcp-server/v1/client"
 	"tcp-server/v1/server"
+	"bufio"
 )
 
 func main() {
@@ -15,7 +16,12 @@ func main() {
 	}
 
 	if params == "client" {
-		client.CreateClient()
+		conn := client.CreateClient()
+		for {
+			inputReader := bufio.NewReader(os.Stdin)
+			input, _ := inputReader.ReadString('\n')
+			client.SendMsgToServer(input, conn)
+		}
 	} else if params == "server" {
 		server.CreateServer()
 	}

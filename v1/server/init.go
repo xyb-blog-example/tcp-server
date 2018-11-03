@@ -28,7 +28,6 @@ func CreateServer() {
 
         //2.2 开goroutine对连接上来的客户端进行处理
         go handleClient(conn)
-
     }
 }
 
@@ -50,6 +49,11 @@ func handleClient(conn net.Conn) {
         fmt.Printf("第%d次接收到客户端发送的长度为%d的数据：%s\n", i, readSize, string(headBuffer))
         i++
 
-        conn.Write([]byte("0123456789"))
+        //3 给客户端回复信息
+        sendMsgToClient("服务端收到了请求:" + string(headBuffer), conn)
     }
+}
+
+func sendMsgToClient(msg string, conn net.Conn) {
+	conn.Write([]byte(msg))
 }
