@@ -3,8 +3,10 @@ package server
 import (
     "fmt"
     "net"
-    "io"
     "os"
+	"tcp-server/v2/protocol"
+	"time"
+	"strconv"
 )
 
 func CreateServer() {
@@ -16,6 +18,7 @@ func CreateServer() {
     }
 
     //2 持续等待来自客户端的连接并对连接进行处理
+	i := 0
     for {
         //2.1 listener.Accept是一个阻塞方法，只有客户端连接时才会有返回
         fmt.Println("正在等待客户端的连接...")
@@ -27,29 +30,25 @@ func CreateServer() {
         fmt.Println("接收到了一个客户端的连接")
 
         //2.2 开goroutine对连接上来的客户端进行处理
-        go handleClient(conn)
-
+        go handleClient(i, conn)
+        i++
     }
 }
 
-func handleClient(conn net.Conn) {
-    i := 0
+func handleClient(i int, conn net.Conn) {
     for {
-        //1 创建长度为20字节的缓冲区
-        headBuffer := make([]byte, 20)
-        //headBuffer := make([]byte, 3)
-
-        //2 开始从网络流中读取数据
-        readSize, err := conn.Read(headBuffer)
+        //1 接受远程发送的数据包
+        bodyBuffer, err := protocol.RecDataPack(conn)
         if err != nil {
-            if err == io.EOF {
-                return
-            }
-            fmt.Println("从网络流中读取数据失败,error:", err.Error())
-        }
-        fmt.Printf("第%d次接收到客户端发送的长度为%d的数据：%s\n", i, readSize, string(headBuffer))
-        i++
+			fmt.Printf("读取失败，断开了第%d个连接,error:%s\n", i, err.Error())
+        	return
+		}
 
-        conn.Write([]byte("0123456789"))
+        //2 打印接收到的数据包
+        fmt.Printf("收到的数据包为：%s\n", string(bodyBuffer))
+
+        //3 睡一秒以后回一个包
+        time.Sleep(1 * time.Second)
+        protocol.SendTcpMsg(conn, []byte("服务器" + strconv.Itoa(i) + "号收到了发送的数据"))
     }
 }

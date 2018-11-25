@@ -5,6 +5,7 @@ import (
 	"tcp-server/v1/client"
 	"tcp-server/v1/server"
 	"bufio"
+	"strings"
 )
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 		for {
 			inputReader := bufio.NewReader(os.Stdin)
 			input, _ := inputReader.ReadString('\n')
-			client.SendMsgToServer(input, conn)
+			client.SendMsgToServer(strings.Trim(input, "\n"), conn)
 		}
 	} else if params == "server" {
 		server.CreateServer()
