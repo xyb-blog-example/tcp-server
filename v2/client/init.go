@@ -1,9 +1,9 @@
 package client
 
 import (
+	"github.com/xyb-blog-example/tcp-server/v2/protocol"
 	"net"
 	"fmt"
-	"tcp-server/v2/protocol"
 	"time"
 	"strconv"
 )
@@ -24,7 +24,6 @@ func CreateClient() {
 	//}
 
 	//3 连接远程节点
-	//tcpConn, err := net.DialTCP("tcp", tcpLAddr, tcpRAddr)
 	tcpConn, err := net.DialTCP("tcp", nil, tcpRAddr)
 	if err != nil {
 		fmt.Println("连接服务端失败,error:" + err.Error())
@@ -36,7 +35,10 @@ func CreateClient() {
 
 	//5 客户端先向服务端发起发一点数据，然后服务端进行相应
 	for i := 0; i < 10; i++ {
-		protocol.SendTcpMsg(tcpConn, []byte("客户端发送了第"+ strconv.Itoa(i) + "条数据"))
+		err := protocol.SendTcpMsg(tcpConn, []byte("客户端发送了第"+ strconv.Itoa(i) + "条数据"))
+		if err != nil {
+			fmt.Println("发送消息失败,error:", err)
+		}
 		time.Sleep(1 * time.Second)
 	}
 }

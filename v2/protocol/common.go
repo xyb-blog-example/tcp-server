@@ -15,10 +15,10 @@ func RecDataPack(conn net.Conn) ([]byte, error) {
 	recDone 		:= false
 	curReadHeadSize	:= uint64(0)
 	curReadBodySize	:= uint64(0)
-	buffer			:= make([]byte, 10000)	//作为缓冲区，为了接受较长的body，可以随便设置长一点，这里也可以不限制长度，比较随意
+	var buffer []byte //作为缓冲区，为了接受较长的body，可以随便设置长一点，这里也可以不限制长度，比较随意，因为后面实际读取的时候会动态扩容
 	for ; !recDone ; {
 		//1 获取请求报头
-		readSize, err := recMsgHead(conn, curReadHeadSize, buffer)
+		readSize, err := recMsgHead(conn, curReadHeadSize, &buffer)
 		if err != nil {
 			curReadHeadSize += readSize
 			//1.1 HEAD_ERROR代表数据获取成功，但是报头不合法，需要重新获取报头，TODO:可以考虑是不是打个日志啥的
@@ -32,7 +32,7 @@ func RecDataPack(conn net.Conn) ([]byte, error) {
 
 		//2 获取请求Body
 		head := convertBytesToHeader(buffer)
-		readSize, err = recMsgBody(conn, head, buffer, curReadBodySize)
+		readSize, err = recMsgBody(conn, head, &buffer, curReadBodySize)
 		if err != nil {
 			curReadBodySize += readSize
 			//2.1 BODY_ERROR代表数据获取成功，但是Body不合法，需要重新获取报头，TODO:可以考虑是不是打个日志啥的
@@ -56,7 +56,7 @@ func RecDataPack(conn net.Conn) ([]byte, error) {
 	返回值1：size uint64，此次读取的字节数，读取失败时为0
 	返回值2：err，返回读取错误
 */
-func recMsgHead(conn net.Conn, curReadSize uint64, buffer []byte) (size uint64, err error) {
+func recMsgHead(conn net.Conn, curReadSize uint64, buffer *[]byte) (size uint64, err error) {
 	//1 获取字节流，直到获取到headSize大小的数据。
 	headSize 	:= HeadSize
 	var thisTimeReadSize uint64 = 0
@@ -70,18 +70,22 @@ func recMsgHead(conn net.Conn, curReadSize uint64, buffer []byte) (size uint64, 
 		if readSize <= 0 {
 			continue
 		}
-		copy(buffer[curReadSize:], headBuffer[:readSize])
+		if uint64(len(*buffer)) <= curReadSize + uint64(readSize) {
+			newBuffer := make([]byte, curReadSize + uint64(readSize))
+			*buffer = append(*buffer, newBuffer...)
+		}
+		copy((*buffer)[curReadSize:], headBuffer[:readSize])
 		curReadSize 		+= uint64(readSize)
 		thisTimeReadSize 	+= uint64(readSize)
 	}
 
 	//2 校验头部是否完整
-	checkErr := checkHead(buffer)
+	checkErr := checkHead(*buffer)
 	if !checkErr {
 		//2.1 去掉头部第一个字节
 		index := uint64(0)
 		for ; index < curReadSize - 1 ; index++ {
-			buffer[index] = buffer[index + 1]
+			(*buffer)[index] = (*buffer)[index + 1]
 		}
 		//2.2 再读入一个字节
 		oneByteBuffer	:= make([]byte, 1)
@@ -93,9 +97,10 @@ func recMsgHead(conn net.Conn, curReadSize uint64, buffer []byte) (size uint64, 
 			if readSize < 1 {
 				continue
 			}
+			break
 		}
 		//2.3 把读入的字节接到之前的buffer后面
-		buffer[index] = oneByteBuffer[0]
+		(*buffer)[index] = oneByteBuffer[0]
 		return thisTimeReadSize, HeadError
 	}
 	return thisTimeReadSize, nil
@@ -110,7 +115,7 @@ func recMsgHead(conn net.Conn, curReadSize uint64, buffer []byte) (size uint64, 
 * 返回值1：size uint64，此次读取的字节数，读取失败时为0
 * 返回值2：err，返回读取错误
 */
-func recMsgBody(conn net.Conn, head *Head, buffer []byte, curReadSize uint64) (size uint64, err error) {
+func recMsgBody(conn net.Conn, head *Head, buffer *[]byte, curReadSize uint64) (size uint64, err error) {
 	//1 从Head中获取Body的长度，并初始化buffer大小
 	bodySize 	:= head.BodyLength
 
@@ -126,18 +131,22 @@ func recMsgBody(conn net.Conn, head *Head, buffer []byte, curReadSize uint64) (s
 		if readSize <= 0 {
 			continue
 		}
-		copy(buffer[HeadSize + curReadSize:], bodyBuffer[:readSize])
+		if uint64(len(*buffer)) <= HeadSize + curReadSize + uint64(readSize) {
+			newBuffer := make([]byte, curReadSize + uint64(readSize))
+			*buffer = append(*buffer, newBuffer...)
+		}
+		copy((*buffer)[HeadSize + curReadSize:], bodyBuffer[:readSize])
 		curReadSize 		+= uint64(readSize)
 		thisTimeReadSize 	+= uint64(readSize)
 	}
 
 	//3 调用实现类的checkBody方法，校验Body是否完整
-	checkErr	:= checkBody(head, buffer[HeadSize:HeadSize+curReadSize])
+	checkErr	:= checkBody(head, (*buffer)[HeadSize:HeadSize+curReadSize])
 	if !checkErr {
 		//3.1 去掉头部第一个字节
 		index := uint64(0)
 		for ; index < HeadSize + curReadSize - 1 ; index++ {
-			buffer[index] = buffer[index + 1]
+			(*buffer)[index] = (*buffer)[index + 1]
 		}
 		//3.2 再读入一个字节
 		oneByteBuffer	:= make([]byte, 1)
@@ -149,9 +158,10 @@ func recMsgBody(conn net.Conn, head *Head, buffer []byte, curReadSize uint64) (s
 			if readSize < 1 {
 				continue
 			}
+			break
 		}
 		//3.3 把读入的字节接到之前的buffer后面
-		buffer[index] = oneByteBuffer[0]
+		(*buffer)[index] = oneByteBuffer[0]
 		return thisTimeReadSize, BodyError
 	}
 	return thisTimeReadSize, nil

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/xyb-blog-example/tcp-server/v2/client"
+	"github.com/xyb-blog-example/tcp-server/v2/server"
 	"os"
-	"tcp-server/v2/client"
-	"tcp-server/v2/server"
 )
 
 func main() {
