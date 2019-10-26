@@ -10,5 +10,5 @@ type Head struct {
 
 const HeadSize = uint64(44)
 
-const HeadMark = "HAHA"
+const HeadMark = "XDZG"
 

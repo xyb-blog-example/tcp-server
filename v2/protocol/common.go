@@ -132,7 +132,7 @@ func recMsgBody(conn net.Conn, head *Head, buffer *[]byte, curReadSize uint64) (
 			continue
 		}
 		if uint64(len(*buffer)) <= HeadSize + curReadSize + uint64(readSize) {
-			newBuffer := make([]byte, curReadSize + uint64(readSize))
+			newBuffer := make([]byte, HeadSize + curReadSize + uint64(readSize))
 			*buffer = append(*buffer, newBuffer...)
 		}
 		copy((*buffer)[HeadSize + curReadSize:], bodyBuffer[:readSize])
